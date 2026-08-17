@@ -90,8 +90,8 @@ func (d *Document) RenderPage(i int) (image.Image, error) {
 	w := clamp1(int(math.Round(wPt * base)))
 	h := clamp1(int(math.Round(hPt * base)))
 	// Use the exact scale that maps the page onto the rounded target size so
-	// the page fills the bitmap precisely (matches the reference rasterizer;
-	// using the raw dpi/72 leaves a sub-pixel drift that misaligns text).
+	// the page fills the bitmap precisely (using the raw dpi/72 leaves a
+	// sub-pixel drift that misaligns text).
 	sx := float64(w) / wPt
 	sy := float64(h) / hPt
 

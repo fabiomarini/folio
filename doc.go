@@ -14,9 +14,9 @@
 //	    // encode img to PNG/JPEG ...
 //	}
 //
-// Rendering mirrors the reference rasterizer: each page is drawn into a
-// white-cleared BGRA bitmap at the requested DPI (scale = DPI/72) with
-// annotations, then converted to an RGBA image.
+// Rendering: each page is drawn into a white-cleared BGRA bitmap at the
+// requested DPI (scale = DPI/72) with annotations, then converted to an RGBA
+// image.
 //
 // The PDFium shared library (libpdfium.{dylib,so,dll}) is loaded at runtime;
 // see Options.LibPath and findLibrary for how it is located.

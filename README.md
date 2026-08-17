@@ -98,6 +98,12 @@ folio --pages 1-3 --flat --format jpeg -o out document.pdf
 
 ## Library
 
+Add it as a dependency, then import and use it:
+
+```sh
+go get github.com/fabiomarini/folio
+```
+
 ```go
 import "github.com/fabiomarini/folio"
 
@@ -145,7 +151,7 @@ Set `--lib` or `PDFIUM_LIB` for an explicit path.
 
 ## Rendering model
 
-Each page is rendered the same way as the reference (Rust) rasterizer:
+Each page is rendered as follows:
 
 1. Load the document and page.
 2. Read the page size in points (CropBox, falling back to MediaBox).
@@ -196,15 +202,6 @@ go test ./...
   render it, and assert on size and pixel color. **Skipped** automatically if
   the pdfium library isn't found (set `PDFIUM_LIB` to enable).
 - `cmd/folio/main_test.go` — page-range parser tests.
-
-## Embedding into a larger project
-
-Move this directory to an `internal/folio` package (or a lib path), delete its
-`go.mod`/`go.sum` (fold the `purego` requirement into the parent module), and
-import it. The public API (`New`, `Options`, `Renderer`, `Document`,
-`OpenDocument`, `RenderPage`, `PageCount`, `Close`) is the stable seam. A
-natural next step is a `PageRenderer` interface with this PDFium implementation
-alongside alternative backends.
 
 ## Licensing
 
