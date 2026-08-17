@@ -15,6 +15,7 @@ folio/
 ├── bitmap.go           BGRA buffer -> image.NRGBA (pure Go, unit-tested)
 ├── renderer.go         public API: Options, Renderer, Document
 ├── *_test.go           unit + integration tests
+├── scripts/            get-pdfium.sh — fetch the PDFium shared library
 └── cmd/folio/          thin CLI wrapper
 ```
 
@@ -39,6 +40,32 @@ CGO_ENABLED=0 go build -o folio ./cmd/folio
 ```
 
 The pdfium shared library is located at runtime (see [Library location](#library-location)).
+
+## Obtaining the PDFium library
+
+folio does not bundle PDFium — it loads a shared library at runtime. Fetch a
+prebuilt one with the helper script:
+
+```sh
+scripts/get-pdfium.sh                 # latest release, current platform
+scripts/get-pdfium.sh chromium/8009   # pin a specific release tag
+```
+
+The script downloads the right binary for your platform from
+[bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) and
+places it in `pdfium/` together with its BSD 3-Clause license files. It honours
+`GOOS`/`GOARCH` when Go is installed, so it also works for cross-compilation
+targets. Supported: darwin / linux / windows × amd64 / arm64 / 386.
+
+Prefer to manage the library yourself? Any of these work:
+
+- `--lib /path/to/libpdfium.dylib` (CLI flag), or
+- `PDFIUM_LIB=/path/to/libpdfium.dylib` (environment variable), or
+- drop `libpdfium.{dylib,so,dll}` in the current directory, `./pdfium/`, or
+  next to the executable.
+
+> PDFium is **BSD 3-Clause**. Keep the `LICENSE` / `licenses/` files the script
+> writes alongside the library when you redistribute it.
 
 ## CLI
 

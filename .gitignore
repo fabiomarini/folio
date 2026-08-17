@@ -3,6 +3,9 @@
 /bin/
 /dist/
 
+# Downloaded PDFium library (fetch with scripts/get-pdfium.sh)
+/pdfium/
+
 # Go test / coverage output
 *.test
 *.out
