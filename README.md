@@ -4,8 +4,8 @@ Rasterize PDF pages to PNG/JPEG images from pure Go, by driving the **PDFium**
 C library directly through [purego](https://github.com/ebitengine/purego) —
 **no cgo**. It builds with `CGO_ENABLED=0` and cross-compiles cleanly.
 
-This is a self-contained prototype with a small, stable public API, designed to
-be embedded later as a library or internal package of the `pageseer` project.
+This is a self-contained library with a small, stable public API, designed to
+be embedded as a package in larger Go projects or used standalone via the CLI.
 
 ```
 folio/
@@ -23,8 +23,9 @@ folio/
 
 - **Single static binary.** No cgo, no CGO toolchain, no `.so` linking at build
   time. The pdfium shared library is loaded at runtime.
-- **Reuses the existing `libpdfium.{dylib,so,dll}`** already shipped with the
-  Rust `pageseer` binary — no new native dependency.
+- **Uses a standard prebuilt `libpdfium.{dylib,so,dll}`** (see [Obtaining the
+  PDFium library](#obtaining-the-pdfium-library)) — no native dependency to
+  build or link.
 - **In-process.** No subprocess, no IPC; rendering returns an `image.Image`.
 - **BSD 3-Clause** (PDFium) — permissive, and compatible with this project's
   MIT license.
@@ -174,8 +175,8 @@ These are non-obvious and cost real debugging time — keep them in mind:
 
 ## Validation
 
-Rendered output was compared pixel-for-pixel against the Rust `pageseer`
-binary (which uses the *same* `libpdfium.dylib`) at 300 DPI, across a set of
+Rendered output was compared pixel-for-pixel against a reference PDFium-based
+rasterizer (using the *same* `libpdfium`) at 300 DPI, across a set of
 multi-page sample documents. Every page matched to within **≤0.63/255** mean
 per-channel difference with **99%+** near-identical pixels; one document
 matched exactly (**0.00/255**, 100%).
@@ -196,14 +197,14 @@ go test ./...
   the pdfium library isn't found (set `PDFIUM_LIB` to enable).
 - `cmd/folio/main_test.go` — page-range parser tests.
 
-## Embedding into `pageseer`
+## Embedding into a larger project
 
-Move this directory to `pageseer/internal/folio` (or a lib path), delete its
+Move this directory to an `internal/folio` package (or a lib path), delete its
 `go.mod`/`go.sum` (fold the `purego` requirement into the parent module), and
 import it. The public API (`New`, `Options`, `Renderer`, `Document`,
 `OpenDocument`, `RenderPage`, `PageCount`, `Close`) is the stable seam. A
-natural next step is a `PageRenderer` interface with this `pdfiumPurego`
-implementation alongside a `rustSubprocess` fallback.
+natural next step is a `PageRenderer` interface with this PDFium implementation
+alongside alternative backends.
 
 ## Licensing
 

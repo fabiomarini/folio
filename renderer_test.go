@@ -50,8 +50,8 @@ func testLibPath(t *testing.T) string {
 		}
 	}
 	for _, c := range []string{
-		"../pageseer-macos-arm64/libpdfium.dylib",
-		"../pageseer-macos-arm64/libpdfium.so",
+		"pdfium/libpdfium.dylib",
+		"pdfium/libpdfium.so",
 		"libpdfium.dylib",
 		"libpdfium.so",
 	} {
