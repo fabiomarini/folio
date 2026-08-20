@@ -34,6 +34,7 @@ func main() {
 		flat    = flag.Bool("flat", false, "flat naming <stem>-NNN.<ext> instead of <stem>/page-NNN.<ext>")
 		pages   = flag.String("pages", "", "page range (1-based), e.g. 1-5,8 (default: all)")
 		list    = flag.Bool("list", false, "print page count and exit")
+		detect  = flag.Bool("detect", false, "detect scanned vs digital pages (text layer) and exit")
 	)
 	flag.Parse()
 
@@ -47,7 +48,7 @@ func main() {
 
 	status := 0
 	for _, in := range flag.Args() {
-		if err := process(r, in, *output, *format, *quality, *flat, *pages, *list); err != nil {
+		if err := process(r, in, *output, *format, *quality, *flat, *pages, *list, *detect); err != nil {
 			fmt.Fprintf(os.Stderr, "folio: %s: %v\n", in, err)
 			status = 1
 		}
@@ -55,7 +56,7 @@ func main() {
 	os.Exit(status)
 }
 
-func process(r *folio.Renderer, in, outDir, format string, quality int, flat bool, pagesSpec string, list bool) error {
+func process(r *folio.Renderer, in, outDir, format string, quality int, flat bool, pagesSpec string, list bool, detect bool) error {
 	doc, err := r.OpenDocument(in)
 	if err != nil {
 		return err
@@ -66,6 +67,9 @@ func process(r *folio.Renderer, in, outDir, format string, quality int, flat boo
 	if list {
 		fmt.Printf("%s: %d pages\n", in, total)
 		return nil
+	}
+	if detect {
+		return detectScan(doc, in)
 	}
 
 	pages, err := parsePages(pagesSpec, total)
@@ -115,6 +119,37 @@ func writeImage(path string, img image.Image, format string, quality int) error 
 	default:
 		return fmt.Errorf("unsupported format %q (use png or jpeg)", format)
 	}
+}
+
+// detectScan prints a per-page scanned/digital classification plus a
+// document rollup, using the text-layer detection in folio, and returns.
+func detectScan(doc *folio.Document, in string) error {
+	fmt.Printf("%s: %d pages\n", in, doc.PageCount())
+	for i := 0; i < doc.PageCount(); i++ {
+		info, err := doc.PageTextInfo(i)
+		if err != nil {
+			return err
+		}
+		kind := "scanned"
+		if info.HasMeaningfulText {
+			kind = "digital"
+		}
+		fmt.Printf("  page %d: %s (%d chars)\n", i+1, kind, info.CharCount)
+	}
+
+	s, err := doc.TextSummary()
+	if err != nil {
+		return err
+	}
+	class := "mixed"
+	switch {
+	case s.AllText:
+		class = "all-digital"
+	case s.AllScanned:
+		class = "all-scanned"
+	}
+	fmt.Printf("  summary: %d digital, %d scanned (%s)\n", s.TextPages, s.ScannedPages, class)
+	return nil
 }
 
 // parsePages parses a 1-based page spec like "1-5,8" into a sorted, de-duped
