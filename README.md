@@ -131,6 +131,31 @@ The API follows the `io.Reader` / `database.Conn` resource pattern: `New` makes
 a reusable `Renderer` (the pdfium library is loaded once, lazily, on first use);
 `OpenDocument` opens a `Document` that you `Close` when done.
 
+### Detecting scanned vs text pages
+
+Every page can be classified as digital (has a usable text layer) or scanned
+(no extractable text, e.g. an image-only page) **in-process, without OCR**:
+
+```go
+doc, _ := r.OpenDocument("invoice.pdf")
+defer doc.Close()
+
+info, _ := doc.PageTextInfo(0)   // per page
+if info.HasMeaningfulText {
+    // digital page — route to the fast text path
+} else {
+    // scanned page — route to VLM/OCR
+}
+
+summary, _ := doc.TextSummary()  // whole document: AllText / AllScanned / Mixed
+```
+
+The signal is the PDFium text layer (`FPDFText_CountChars`). A non-zero count
+means Chromium's text engine decoded real glyphs (including ToUnicode/CID/CJK
+fonts). `HasMeaningfulText` requires ≥ 10 chars so a page carrying only a
+watermark, page number, or stray glyph is not mistaken for a digital page;
+route those to VLM. This is detection only — folio does not extract the text.
+
 ### Concurrency
 
 - A `Renderer` is safe to share across goroutines.

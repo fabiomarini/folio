@@ -38,6 +38,12 @@ var (
 	fpdfBmpFillRect  func(bmp unsafe.Pointer, l, t, w, h int, color uint32)
 	fpdfBmpDestroy   func(bmp unsafe.Pointer)
 	fpdfRenderMatrix func(bmp, page unsafe.Pointer, m *fpdfMatrix, clip *fpdfRectF, flags int)
+
+	// FPDFText_* — text-page API (fpdf_text.h). Used only for detection: a
+	// page's text layer is loaded and counted to decide digital vs scanned.
+	fpdfTextLoadPage   func(page unsafe.Pointer) unsafe.Pointer // FPDFText_LoadPage
+	fpdfTextClosePage  func(textpage unsafe.Pointer)            // FPDFText_ClosePage
+	fpdfTextCountChars func(textpage unsafe.Pointer) int        // FPDFText_CountChars
 )
 
 var (
@@ -67,6 +73,9 @@ func bind(libPath string) error {
 		purego.RegisterLibFunc(&fpdfBmpFillRect, handle, "FPDFBitmap_FillRect")
 		purego.RegisterLibFunc(&fpdfBmpDestroy, handle, "FPDFBitmap_Destroy")
 		purego.RegisterLibFunc(&fpdfRenderMatrix, handle, "FPDF_RenderPageBitmapWithMatrix")
+		purego.RegisterLibFunc(&fpdfTextLoadPage, handle, "FPDFText_LoadPage")
+		purego.RegisterLibFunc(&fpdfTextClosePage, handle, "FPDFText_ClosePage")
+		purego.RegisterLibFunc(&fpdfTextCountChars, handle, "FPDFText_CountChars")
 		fpdfInitLibrary()
 	})
 	return bindErr
