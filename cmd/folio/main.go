@@ -10,6 +10,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"image"
@@ -83,20 +84,26 @@ func process(r *folio.Renderer, in, outDir, format string, quality int, flat boo
 		ext = ".jpg"
 	}
 
+	outSub := outDir
+	if !flat {
+		outSub = filepath.Join(outDir, stem)
+	}
+	if err := os.MkdirAll(outSub, 0o755); err != nil {
+		return err
+	}
+
 	for _, p := range pages {
 		img, err := doc.RenderPage(p - 1) // 0-based
 		if err != nil {
 			return fmt.Errorf("page %d: %w", p, err)
 		}
-		var outPath string
+		var name string
 		if flat {
-			outPath = filepath.Join(outDir, fmt.Sprintf("%s-%03d%s", stem, p, ext))
+			name = fmt.Sprintf("%s-%03d%s", stem, p, ext)
 		} else {
-			outPath = filepath.Join(outDir, stem, fmt.Sprintf("page-%03d%s", p, ext))
+			name = fmt.Sprintf("page-%03d%s", p, ext)
 		}
-		if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
-			return err
-		}
+		outPath := filepath.Join(outSub, name)
 		if err := writeImage(outPath, img, format, quality); err != nil {
 			return err
 		}
@@ -105,20 +112,31 @@ func process(r *folio.Renderer, in, outDir, format string, quality int, flat boo
 	return nil
 }
 
-func writeImage(path string, img image.Image, format string, quality int) error {
+func writeImage(path string, img image.Image, format string, quality int) (err error) {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	// A failed Close on a written file can signal a flush/disk-full error that
+	// Encode alone won't catch, so surface it when nothing else already failed.
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	w := bufio.NewWriter(f)
 	switch format {
 	case "png":
-		return png.Encode(f, img)
+		err = png.Encode(w, img)
 	case "jpeg", "jpg":
-		return jpeg.Encode(f, img, &jpeg.Options{Quality: quality})
+		err = jpeg.Encode(w, img, &jpeg.Options{Quality: quality})
 	default:
 		return fmt.Errorf("unsupported format %q (use png or jpeg)", format)
 	}
+	if err != nil {
+		return err
+	}
+	return w.Flush()
 }
 
 // detectScan prints a per-page scanned/digital classification plus a

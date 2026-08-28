@@ -41,8 +41,9 @@ func New(opts Options) *Renderer {
 // Document is an open PDF ready for page rendering. Callers must Close it.
 // A Document is not safe for concurrent use.
 type Document struct {
-	r   *Renderer
-	doc unsafe.Pointer
+	r     *Renderer
+	doc   unsafe.Pointer
+	pages int // cached at open; FFI page count is stable and costly to re-fetch
 }
 
 // OpenDocument opens the PDF at path for rendering. It loads the pdfium
@@ -62,12 +63,12 @@ func (r *Renderer) OpenDocument(path string) (*Document, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("open %q: pdfium failed to load document (encrypted or corrupt?)", path)
 	}
-	return &Document{r: r, doc: doc}, nil
+	return &Document{r: r, doc: doc, pages: fpdfGetPageCount(doc)}, nil
 }
 
 // PageCount returns the number of pages in the document.
 func (d *Document) PageCount() int {
-	return fpdfGetPageCount(d.doc)
+	return d.pages
 }
 
 // RenderPage renders the 0-based page i to an RGBA image.
