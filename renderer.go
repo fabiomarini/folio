@@ -71,7 +71,11 @@ func (d *Document) PageCount() int {
 	return d.pages
 }
 
-// RenderPage renders the 0-based page i to an RGBA image.
+// RenderPage renders the 0-based page i to an RGBA image, upright: the page's
+// /Rotate is applied, so a landscape page stored with /Rotate 90 or 270 comes
+// back with swapped (portrait) dimensions. pdfium rotates the content itself;
+// the bitmap must be sized to the rotated (displayed) box, or the rotated
+// content overflows the unrotated box and renders clipped.
 func (d *Document) RenderPage(i int) (image.Image, error) {
 	n := d.PageCount()
 	if i < 0 || i >= n {
@@ -86,6 +90,11 @@ func (d *Document) RenderPage(i int) (image.Image, error) {
 	wPt, hPt, err := pageSize(page)
 	if err != nil {
 		return nil, err
+	}
+	// FPDFPage_GetRotation returns 0/1/2/3 for 0/90/180/270 degrees clockwise.
+	// 90 and 270 swap the displayed width and height.
+	if r := fpdfPageRotation(page); r == 1 || r == 3 {
+		wPt, hPt = hPt, wPt
 	}
 	base := d.r.dpi / 72.0
 	w := clamp1(int(math.Round(wPt * base)))

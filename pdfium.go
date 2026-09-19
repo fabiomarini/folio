@@ -34,6 +34,7 @@ var (
 	fpdfClosePage    func(page unsafe.Pointer)
 	fpdfPageCropBox  func(page unsafe.Pointer, l, b, w, h *float32) int
 	fpdfPageMediaBox func(page unsafe.Pointer, l, b, w, h *float32) int
+	fpdfPageRotation func(page unsafe.Pointer) int
 	fpdfBmpCreateEx  func(w, h, format int, buf []byte, stride int) unsafe.Pointer
 	fpdfBmpFillRect  func(bmp unsafe.Pointer, l, t, w, h int, color uint32)
 	fpdfBmpDestroy   func(bmp unsafe.Pointer)
@@ -69,6 +70,7 @@ func bind(libPath string) error {
 		purego.RegisterLibFunc(&fpdfClosePage, handle, "FPDF_ClosePage")
 		purego.RegisterLibFunc(&fpdfPageCropBox, handle, "FPDFPage_GetCropBox")
 		purego.RegisterLibFunc(&fpdfPageMediaBox, handle, "FPDFPage_GetMediaBox")
+		purego.RegisterLibFunc(&fpdfPageRotation, handle, "FPDFPage_GetRotation")
 		purego.RegisterLibFunc(&fpdfBmpCreateEx, handle, "FPDFBitmap_CreateEx")
 		purego.RegisterLibFunc(&fpdfBmpFillRect, handle, "FPDFBitmap_FillRect")
 		purego.RegisterLibFunc(&fpdfBmpDestroy, handle, "FPDFBitmap_Destroy")

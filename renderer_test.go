@@ -6,13 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 )
 
 // makeSolidPDF builds a minimal single-page PDF whose page is a solid-color
-// rectangle (fill is an "r g b rg" triple in 0..1). It computes a correct xref
-// table so strict parsers accept it.
-func makeSolidPDF(fill string, w, h int) []byte {
+// rectangle (fill is an "r g b rg" triple in 0..1). extra is appended to the
+// page dictionary (e.g. "/Rotate 90"). It computes a correct xref table so
+// strict parsers accept it.
+func makeSolidPDF(fill string, w, h int, extra ...string) []byte {
 	var buf bytes.Buffer
 	offsets := make([]int, 5)
 	buf.WriteString("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n")
@@ -22,7 +24,8 @@ func makeSolidPDF(fill string, w, h int) []byte {
 	offsets[2] = buf.Len()
 	buf.WriteString("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
 	offsets[3] = buf.Len()
-	fmt.Fprintf(&buf, "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] /Resources << /ProcSet [/PDF] >> /Contents 4 0 R >>\nendobj\n", w, h)
+	pageDict := fmt.Sprintf("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] %s /Resources << /ProcSet [/PDF] >> /Contents 4 0 R >>\nendobj\n", w, h, strings.Join(extra, " "))
+	buf.WriteString(pageDict)
 
 	content := fmt.Sprintf("%s\n0 0 %d %d re\nf\n", fill, w, h)
 	offsets[4] = buf.Len()
@@ -130,5 +133,34 @@ func TestRender_Scaling(t *testing.T) {
 	}
 	if b := img.Bounds(); b.Dx() != 200 || b.Dy() != 100 {
 		t.Fatalf("size = %dx%d, want 200x100 (100x50pt @144dpi)", b.Dx(), b.Dy())
+	}
+}
+
+// TestRender_RotatedPage verifies /Rotate is honored: a 200x100 page stored
+// with /Rotate 90 must render as 100x200, fully covered (an unrotated bitmap
+// would clip the rotated content).
+func TestRender_RotatedPage(t *testing.T) {
+	lib := testLibPath(t)
+	r := New(Options{LibPath: lib, DPI: 72})
+	pdfPath := writeTempPDF(t, makeSolidPDF("0 0.6 0 rg", 200, 100, "/Rotate 90"))
+	doc, err := r.OpenDocument(pdfPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer doc.Close()
+	img, err := doc.RenderPage(0)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if b := img.Bounds(); b.Dx() != 100 || b.Dy() != 200 {
+		t.Fatalf("size = %dx%d, want 100x200 (200x100pt page rotated 90)", b.Dx(), b.Dy())
+	}
+	// Corners and center must all carry the fill: rotation-aware sizing means
+	// the content covers the whole displayed box, not a clipped slice.
+	for _, pt := range [][2]int{{1, 1}, {98, 1}, {1, 198}, {98, 198}, {50, 100}} {
+		r16, g16, b16, _ := img.At(pt[0], pt[1]).RGBA()
+		if r16>>8 > 30 || b16>>8 > 30 || g16>>8 < 120 {
+			t.Errorf("pixel at %v = (%d,%d,%d), want solid green", pt, r16>>8, g16>>8, b16>>8)
+		}
 	}
 }
